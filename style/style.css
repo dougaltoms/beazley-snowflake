@@ -11,11 +11,17 @@ h1 {
 h2 {
     color: #dc199b;
     font-family: tiempos fine medium;
-    font-size: 26px;
+    font-size: 38px;
+}
+
+h3 {
+    color: #dc199b;
+    font-family: arial;
+    font-size: 24px;
 }
 
 p {
     color: black;
     font-family: arial;
-    font-size: 18px
+    font-size: 18px;
 }
