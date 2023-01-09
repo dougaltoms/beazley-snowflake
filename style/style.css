@@ -1,0 +1,21 @@
+body  {
+    background-color: #c8c3cd;
+}
+
+h1 {
+    color: #dc199b;
+    font-family: tiempos fine medium;
+    font-size: 42px;
+}
+
+h2 {
+    color: #dc199b;
+    font-family: tiempos fine medium;
+    font-size: 26px;
+}
+
+p {
+    color: black;
+    font-family: arial;
+    font-size: 18px
+}
