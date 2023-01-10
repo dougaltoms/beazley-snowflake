@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 import snowflake.connector
 
+
 # Set global variables
 TIME_TO_LIVE = 600
 
