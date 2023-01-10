@@ -28,7 +28,7 @@ def homepage():
     user = account_params['CURRENT_USER()'][0]
     role = account_params['CURRENT_ROLE()'][0]
 
-    st.success(f"Logged in as: {user} ({role})", icon="ℹ️")
+    st.info(f"Logged in as: {user} ({role})", icon="ℹ️")
 
     #--------------------------------#
     # UI to add comments to SF object
@@ -107,23 +107,6 @@ def homepage():
                 st.dataframe(st.session_state.df[1:limit+1], use_container_width=True)
 
 
-        # Describe selected table (before and after) to show effect of adding comments
-
-        # columns = st.session_state.df.columns
-    
-        # with st.form("comment_form"):
-        #     column_to_comment = st.selectbox("Column to comment on", columns)
-        #     comment = st.text_area('Comment')
-
-        #     submit = st.form_submit_button("Submit Comment")
-
-        #     if submit:
-        #         submit = False
-        #         st.write(f"{column_to_comment},{comment}" )
-
-
-
-
         column_to_comment = st.selectbox("Select column", df.columns)
         if column_to_comment:
             st.session_state['column_to_comment'] = column_to_comment
@@ -140,13 +123,8 @@ def homepage():
         
             code = f'''COMMENT ON COLUMN {st.session_state.db_selection[0]}.{st.session_state.schema_selection[0]}.{st.session_state.table_selection[0]}.{st.session_state.column_to_comment} IS '{st.session_state.comment}'; '''
             st.code(code, language='sql')
-            st.session_state.button = False
-            
-        before, after = st.columns(2)
 
-        with before:
-            st.write("Table description before")
-
+            # Describe table before comment added
             before_comments = sf.query_to_df(f'''describe table {st.session_state.db_selection[0]}.{st.session_state.schema_selection[0]}.{st.session_state.table_selection[0]}''')
 
             if 'before_comments' not in st.session_state:
@@ -154,11 +132,10 @@ def homepage():
             else:
                 st.session_state['before_comments'] = before_comments
 
-            st.dataframe(st.session_state.before_comments)
+            # Add comment   
+            sf.run_query(code)
 
-        with after:
-            st.write("Table description after")
-
+            # Describe table after comment added
             after_comments = sf.query_to_df(f'''describe table {st.session_state.db_selection[0]}.{st.session_state.schema_selection[0]}.{st.session_state.table_selection[0]}''')
 
             if 'after_comments' not in st.session_state:
@@ -166,7 +143,19 @@ def homepage():
             else:
                 st.session_state['after_comments'] = after_comments
 
-            st.dataframe(st.session_state.after_comments)
+            # Turn button off    
+            st.session_state.button = False
+
+            # Display results of adding comment
+            before, after = st.columns(2)
+
+            with before:
+                st.write("Table description before")
+                st.dataframe(st.session_state.before_comments)
+
+            with after:
+                st.write("Table description after")
+                st.dataframe(st.session_state.after_comments)
     
     #---------------------------#
     # Geospatial analysis is easy
