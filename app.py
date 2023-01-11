@@ -199,9 +199,9 @@ def homepage():
     #- Altering tasks -#
     #------------------#
 
-    st.markdown("---")
-    st.subheader("Altering Tasks")
-    st.write("E")
+    # st.markdown("---")
+    # st.subheader("Altering Tasks")
+    # st.write("E")
 
 if __name__ == "__main__":
     homepage()
