@@ -38,143 +38,125 @@ def homepage():
     st.subheader("No code UI")
     st.markdown("Streamlit's UI makes it easy for a user to execute simple, no-code SQL statements e.g. adding comments to an object or altering tasks")
 
-    left, right = st.columns(2)
+    # Get list of accessible DBs
+    db = sf.query_to_df('''show databases in account;''')
+    db = db['name'].to_list()
 
-    ##################
-    # Altering Tasks #
-    ##################
-    with left:
-        # Show tasks in account
-        tasks = sf.query_to_df('''show tasks in account;''')
-        tasks = tasks[['name', 'state']]
-        st.dataframe(tasks)
+    # Allow user to choose which DB to work in
+    col1, col2, col3 = st.columns(3)
 
-        task_names = tasks['name'].to_list()
-
-    ###################
-    # Adding comments #
-    ###################
-
-    with right:
-        # Get list of accessible DBs
-        db = sf.query_to_df('''show databases in account;''')
-        db = db['name'].to_list()
-
-        # Allow user to choose which DB to work in
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            db_selection = st.multiselect('Select Database', db)
-            
-            if 'db_selection' not in st.session_state:
-                st.session_state['db_selection'] = db_selection
-            else:
-                st.session_state['db_selection'] = db_selection
+    with col1:
+        db_selection = st.multiselect('Select Database', db)
         
-            if db_selection:
+        if 'db_selection' not in st.session_state:
+            st.session_state['db_selection'] = db_selection
+        else:
+            st.session_state['db_selection'] = db_selection
+    
+        if db_selection:
 
-                # Get list of accessible Schemas
-                schemas = sf.query_to_df(f'''show schemas in database {db_selection[0]};''')
-                schemas = schemas['name'].to_list()
+            # Get list of accessible Schemas
+            schemas = sf.query_to_df(f'''show schemas in database {db_selection[0]};''')
+            schemas = schemas['name'].to_list()
 
-                # Allow user to choose which Schema to work in
-                with col2:
-                    schema_selection = st.multiselect('Select Schema', schemas)
+            # Allow user to choose which Schema to work in
+            with col2:
+                schema_selection = st.multiselect('Select Schema', schemas)
+        
+                if 'schema_selection' not in st.session_state:
+                    st.session_state['schema_selection'] = schema_selection
+                else:
+                    st.session_state['schema_selection'] = schema_selection
+
+                if schema_selection:
+
+                    # Get list of accessible Tables/Views
+                    tables = sf.query_to_df(f'''show tables in {db_selection[0]}.{schema_selection[0]}''')
+                    tables = tables['name'].to_list()
+
+                    # Allow user to choose which Table to work in
+                    with col3:
+                        table_selection = st.multiselect('Select Table / View', tables)
+
+                        if 'table_selection' not in st.session_state:
+                            st.session_state['table_selection'] = table_selection
+                        else:
+                            st.session_state['table_selection'] = table_selection                        
             
-                    if 'schema_selection' not in st.session_state:
-                        st.session_state['schema_selection'] = schema_selection
-                    else:
-                        st.session_state['schema_selection'] = schema_selection
+                        if table_selection:
 
-                    if schema_selection:
+                            # Display info about table
+                            df = sf.query_to_df(f'''select * 
+                                                from {db_selection[0]}.{schema_selection[0]}.{table_selection[0]};''')
 
-                        # Get list of accessible Tables/Views
-                        tables = sf.query_to_df(f'''show tables in {db_selection[0]}.{schema_selection[0]}''')
-                        tables = tables['name'].to_list()
-
-                        # Allow user to choose which Table to work in
-                        with col3:
-                            table_selection = st.multiselect('Select Table / View', tables)
-
-                            if 'table_selection' not in st.session_state:
-                                st.session_state['table_selection'] = table_selection
+                            # Store in session_state
+                            if 'df' not in st.session_state:
+                                st.session_state['df'] = df
                             else:
-                                st.session_state['table_selection'] = table_selection                        
-                
-                            if table_selection:
+                                st.session_state['df'] = df
 
-                                # Display info about table
-                                df = sf.query_to_df(f'''select * 
-                                                    from {db_selection[0]}.{schema_selection[0]}.{table_selection[0]};''')
+                            
+    # Number of rows to display
+    if 'df' in st.session_state:
 
-                                # Store in session_state
-                                if 'df' not in st.session_state:
-                                    st.session_state['df'] = df
-                                else:
-                                    st.session_state['df'] = df
-
+        with st.expander(f"View {st.session_state.table_selection[0]}"):
                                 
-        # Number of rows to display
-        if 'df' in st.session_state:
+            limit = st.number_input('Select number of rows to display', min_value=1, value=5,max_value=1000, format='%i')
 
-            with st.expander(f"View {st.session_state.table_selection[0]}"):
-                                    
-                limit = st.number_input('Select number of rows to display', min_value=1, value=5,max_value=1000, format='%i')
+            if limit:
+                st.dataframe(st.session_state.df[1:limit+1], use_container_width=True)
 
-                if limit:
-                    st.dataframe(st.session_state.df[1:limit+1], use_container_width=True)
+        with st.expander(f"Add comments to {st.session_state.table_selection[0]}"):
+            column_to_comment = st.selectbox("Select column", df.columns)
+            if column_to_comment:
+                st.session_state['column_to_comment'] = column_to_comment
 
-            with st.expander(f"Add comments to {st.session_state.table_selection[0]}"):
-                column_to_comment = st.selectbox("Select column", df.columns)
-                if column_to_comment:
-                    st.session_state['column_to_comment'] = column_to_comment
-
-                comment = st.text_area("Comment text")
-                if comment:
-                    st.session_state['comment'] = comment
-                
-                button = st.button("Add comment")
-                if button:
-                    st.session_state['button'] = button
-
-                if 'button' in st.session_state and st.session_state.button == True:
-                
-                    code = f'''COMMENT ON COLUMN {st.session_state.db_selection[0]}.{st.session_state.schema_selection[0]}.{st.session_state.table_selection[0]}.{st.session_state.column_to_comment} IS '{st.session_state.comment}'; '''
-                    st.code(code, language='sql')
-
-                    # Describe table before comment added
-                    before_comments = sf.query_to_df(f'''describe table {st.session_state.db_selection[0]}.{st.session_state.schema_selection[0]}.{st.session_state.table_selection[0]}''')
-
-                    if 'before_comments' not in st.session_state:
-                        st.session_state['before_comments'] = before_comments
-                    else:
-                        st.session_state['before_comments'] = before_comments
-
-                    # Add comment   
-                    sf.run_query(code)
-
-                    # Describe table after comment added
-                    after_comments = sf.query_to_df(f'''describe table {st.session_state.db_selection[0]}.{st.session_state.schema_selection[0]}.{st.session_state.table_selection[0]}''')
-
-                    if 'after_comments' not in st.session_state:
-                        st.session_state['after_comments'] = after_comments
-                    else:
-                        st.session_state['after_comments'] = after_comments
-
-                    # Turn button off    
-                    st.session_state.button = False
-
-                    # Display results of adding comment
-                    before, after = st.columns(2)
-
-                    with before:
-                        st.write("Table description before")
-                        st.dataframe(st.session_state.before_comments)
-
-                    with after:
-                        st.write("Table description after")
-                        st.dataframe(st.session_state.after_comments)
+            comment = st.text_area("Comment text")
+            if comment:
+                st.session_state['comment'] = comment
             
+            button = st.button("Add comment")
+            if button:
+                st.session_state['button'] = button
+
+            if 'button' in st.session_state and st.session_state.button == True:
+            
+                code = f'''COMMENT ON COLUMN {st.session_state.db_selection[0]}.{st.session_state.schema_selection[0]}.{st.session_state.table_selection[0]}.{st.session_state.column_to_comment} IS '{st.session_state.comment}'; '''
+                st.code(code, language='sql')
+
+                # Describe table before comment added
+                before_comments = sf.query_to_df(f'''describe table {st.session_state.db_selection[0]}.{st.session_state.schema_selection[0]}.{st.session_state.table_selection[0]}''')
+
+                if 'before_comments' not in st.session_state:
+                    st.session_state['before_comments'] = before_comments
+                else:
+                    st.session_state['before_comments'] = before_comments
+
+                # Add comment   
+                sf.run_query(code)
+
+                # Describe table after comment added
+                after_comments = sf.query_to_df(f'''describe table {st.session_state.db_selection[0]}.{st.session_state.schema_selection[0]}.{st.session_state.table_selection[0]}''')
+
+                if 'after_comments' not in st.session_state:
+                    st.session_state['after_comments'] = after_comments
+                else:
+                    st.session_state['after_comments'] = after_comments
+
+                # Turn button off    
+                st.session_state.button = False
+
+                # Display results of adding comment
+                before, after = st.columns(2)
+
+                with before:
+                    st.write("Table description before")
+                    st.dataframe(st.session_state.before_comments)
+
+                with after:
+                    st.write("Table description after")
+                    st.dataframe(st.session_state.after_comments)
+        
         #---------------------------#
         # Geospatial analysis is easy
         #---------------------------#
